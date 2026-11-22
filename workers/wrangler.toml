@@ -1,0 +1,30 @@
+# 「나의 수호천사」 결제 확인 Worker
+# ------------------------------------------------------------------
+# 배포 전에 아래 값을 실제 값으로 바꿉니다.
+#   - PAYAPP_USERID : 페이앱 아이디(가맹점 ID)
+#   - APP_ORIGIN    : 사이트 주소. Cloudflare Pages 주소가 정해지면 그 주소로.
+#   - KV 네임스페이스 id / preview_id : `npx wrangler kv namespace create PAYAPP_KV` 결과
+# 시크릿(PAYAPP_REQUESTKEY · PAYAPP_LINKVAL · UNLOCK_TOKEN_SECRET)은 파일에 쓰지 않고
+#   `npx wrangler secret put 이름` 으로 넣습니다.
+#
+# 이번 단계에서는 배포하지 않습니다(로컬 구축·검증까지만).
+
+name = "suho-angel-payapp"
+main = "src/index.ts"
+compatibility_date = "2026-11-18"
+workers_dev = true
+
+[vars]
+PAYAPP_USERID = "여기에_페이앱_아이디"
+APP_ORIGIN = "https://suho-angel.pages.dev"
+APP_BASE_PATH = "/"
+ALLOWED_ORIGINS = ""
+PAYTYPE = "card,kakaopay,naverpay"
+
+[[kv_namespaces]]
+binding = "PAYAPP_KV"
+id = "여기에_KV_네임스페이스_ID"
+preview_id = "여기에_프리뷰_KV_ID"
+
+[observability]
+enabled = true
