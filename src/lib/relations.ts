@@ -1456,7 +1456,10 @@ export type Relation = {
   tension: RelationAspect | null;
   aspects: RelationAspect[];
   signName: string;
+  signIndex: number;
   signGlyph: string;
+  /** 초대 카드처럼 별자리 자리만으로 계산한 간이 관계 (생년월일시 없이) */
+  approx: boolean;
   guardian: Guardian;
   keyword2027: string;
   line2027: string;
@@ -1608,7 +1611,7 @@ function tierNoteOf(tier: Tier, overlay: HouseOverlay): string {
   }
 
   if (topOpen && rivalHot) {
-    return `${topLabel}가 ${verb} 있지만 7·10하우스(라이벌)의 ${rivalWith} ${tier.name} 자리에 머물렀습니다.${tail}`;
+    return `${topLabel} 쪽이 ${verb} 있지만 7·10하우스(라이벌)의 ${rivalWith} ${tier.name} 자리에 머물렀습니다.${tail}`;
   }
   if (topOpen) {
     const friendBit =
@@ -1619,7 +1622,7 @@ function tierNoteOf(tier: Tier, overlay: HouseOverlay): string {
       overlay.bonus >= 0.5
         ? `${tier.name} 자리까지 올라왔습니다${friendBit}`
         : `${tier.name} 자리에 섰습니다${friendBit}`;
-    return `${topLabel}가 ${verb} ${end}.${tail}`;
+    return `${topLabel} 쪽이 ${verb} ${end}.${tail}`;
   }
   if (overlay.bonus <= -0.5) {
     return `수호 쪽 하우스가 흐려 교차 각의 힘으로 ${tier.name} 자리에 머물렀습니다.${tail}`;
@@ -1632,6 +1635,7 @@ export function relationOf(
   other: Chart,
   name: string,
   genders?: { me?: unknown; other?: unknown },
+  options?: { approx?: boolean },
 ): Relation {
   const mode = compatModeOf(genders?.me, genders?.other);
   const pa = pointsOf(me);
@@ -1705,7 +1709,9 @@ export function relationOf(
     tension,
     aspects,
     signName: otherSign.name,
+    signIndex: otherSign.index,
     signGlyph: otherSign.glyph,
+    approx: Boolean(options?.approx),
     guardian: guardianOfSign(other.sun.signIndex),
     keyword2027: keyword.keyword,
     line2027: keyword.line,

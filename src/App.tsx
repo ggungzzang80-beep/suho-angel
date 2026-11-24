@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { computeChart, type Chart } from './lib/astro';
 import { findCity } from './lib/cities';
 import { guardianOfSign } from './lib/guardians';
+import { cardFromChart, chartFromCard, decodeInviteCard, encodeInviteCard, genderOfCard, INVITE_NOTE, type InviteCard } from './lib/invite';
 import { buildInsights } from './lib/natal';
 import { withJosa } from './lib/korean';
 import type { ProductId } from './lib/products';
@@ -16,11 +17,13 @@ import { Modal, SectionHead, SheetHeader, Toast } from './components/ui';
 
 const STORE_KEY = 'suho-angel.v1';
 
-type Person = { id: string; name: string; relation: string; input: IntakeSubmit };
+/**
+ * 사람 한 명 — 직접 입력한 사람은 input 을, 초대 카드로 들어온 사람은 card 를 가집니다.
+ * (초대 카드에는 생년월일시가 없습니다 — lib/invite.ts 참고)
+ */
+type Person = { id: string; name: string; relation: string; input?: IntakeSubmit; card?: InviteCard };
 
 type Saved = { me: IntakeSubmit | null; people: Person[]; unlocked: string[] };
-
-type Invite = { n: string; d: string; t: string; k: boolean; c: string; g?: string };
 
 /* ------------------------------ 저장 ------------------------------ */
 
@@ -38,7 +41,9 @@ function loadSaved(): Saved {
     };
     return {
       me: restore(parsed.me ?? null),
-      people: (parsed.people ?? []).map((p) => ({ ...p, input: restore(p.input)! })).filter((p) => p.input),
+      people: (parsed.people ?? [])
+        .map((p) => (p.card ? { ...p, input: undefined } : { ...p, input: restore(p.input ?? null) ?? undefined }))
+        .filter((p) => p.card || p.input),
       unlocked: parsed.unlocked ?? [],
     };
   } catch {
@@ -55,29 +60,6 @@ function persist(saved: Saved) {
 }
 
 /* ------------------------------ 초대 링크 ------------------------------ */
-
-function encodeInvite(inv: Invite): string {
-  const json = JSON.stringify(inv);
-  const b64 = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function decodeInvite(value: string): Invite | null {
-  try {
-    const b64 = value.replace(/-/g, '+').replace(/_/g, '/');
-    const json = decodeURIComponent(
-      atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))
-        .split('')
-        .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
-        .join(''),
-    );
-    const parsed = JSON.parse(json) as Invite;
-    if (!parsed?.d || parsed.d.length !== 8) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
 
 function toInput(v: IntakeSubmit): IntakeSubmit {
   return { ...v, city: v.city };
@@ -100,7 +82,7 @@ function chartOf(v: IntakeSubmit): Chart {
 
 export default function App() {
   const [saved, setSaved] = useState<Saved>(() => loadSaved());
-  const [invite, setInvite] = useState<Invite | null>(null);
+  const [invite, setInvite] = useState<InviteCard | null>(null);
   const [joined, setJoined] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -113,8 +95,9 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get('invite');
     if (!raw) return;
-    const decoded = decodeInvite(raw);
+    const decoded = decodeInviteCard(raw);
     if (decoded) setInvite(decoded);
+    else setToast('초대 링크를 읽을 수 없습니다. 새 링크를 받아 주세요.');
   }, []);
 
   useEffect(() => {
@@ -126,9 +109,16 @@ export default function App() {
   const people = useMemo(() => {
     if (!meChart) return [];
     return saved.people.map((p) => {
-      const chart = chartOf(p.input);
+      /* 초대 카드로 들어온 사람은 자리만으로 복원한 간이 차트를 씁니다 */
+      const chart = p.card ? chartFromCard(p.card) : chartOf(p.input!);
       /* v5 — 두 사람 성별이 모두 있을 때만 남녀·동성 궁합 가중치로 갈립니다 */
-      return relationOf(meChart, chart, p.name, { me: saved.me?.gender, other: p.input.gender });
+      return relationOf(
+        meChart,
+        chart,
+        p.name,
+        { me: saved.me?.gender, other: p.card ? genderOfCard(p.card) : p.input?.gender },
+        { approx: Boolean(p.card) },
+      );
     });
   }, [saved.people, meChart]);
 
@@ -145,23 +135,13 @@ export default function App() {
   };
 
   const handleJoin = (v: IntakeSubmit) => {
+    /* 초대 카드에는 생년월일시가 없습니다 — 이름과 별자리 자리만으로 상대를 복원합니다 */
     const host: Person | null = invite
       ? {
-          id: `invite-${invite.d}`,
+          id: `invite-${invite.p.join('')}-${invite.a ?? 'x'}`,
           name: invite.n || '초대한 사람',
           relation: '초대한 사람',
-          input: {
-            nickname: invite.n || '초대한 사람',
-            year: Number(invite.d.slice(0, 4)),
-            month: Number(invite.d.slice(4, 6)),
-            day: Number(invite.d.slice(6, 8)),
-            hour: invite.k ? Number(invite.t.slice(0, 2)) : 12,
-            minute: invite.k ? Number(invite.t.slice(2, 4)) : 0,
-            timeKnown: invite.k,
-            city: findCity(invite.c) ?? v.city,
-            relation: '초대한 사람',
-            gender: normalizeGender(invite.g),
-          },
+          card: invite,
         }
       : null;
     setSaved({ me: toInput(v), people: host ? [host] : [], unlocked: [] });
@@ -186,7 +166,14 @@ export default function App() {
   };
 
   const removePerson = (r: Relation) => {
-    setSaved((prev) => ({ ...prev, people: prev.people.filter((p) => p.name !== r.name || p.input.day !== r.chart.day) }));
+    setSaved((prev) => ({
+      ...prev,
+      people: prev.people.filter((p) => {
+        /* 직접 입력한 사람과 초대 카드로 들어온 사람 모두 같은 기준(이름+차트 고유값)으로 지웁니다 */
+        const seed = p.card ? chartFromCard(p.card).seed : p.input ? chartOf(p.input).seed : -1;
+        return !(p.name === r.name && seed === r.chart.seed);
+      }),
+    }));
     setSelected(null);
     notify('지도에서 지웠습니다.');
   };
@@ -225,20 +212,12 @@ export default function App() {
     notify('예시 친구 3명을 올렸습니다. 지우기로 지울 수 있어요.');
   };
 
-  const shareLink = (name?: string): string => {
+  const shareLink = (): string => {
     if (!saved.me) return window.location.href;
-    const target = name && saved.people.find((p) => p.name === name);
-    const src = target ? target.input : saved.me;
-    const inv: Invite = {
-      n: src.nickname,
-      d: `${src.year}${String(src.month).padStart(2, '0')}${String(src.day).padStart(2, '0')}`,
-      t: `${String(src.hour).padStart(2, '0')}${String(src.minute).padStart(2, '0')}`,
-      k: src.timeKnown,
-      c: src.city.name,
-      g: src.gender,
-    };
+    /* 링크에는 이름과 별자리 자리만 담깁니다 — 생년월일·시각·도시는 담기지 않습니다 */
+    const card = cardFromChart(chartOf(saved.me), saved.me.gender);
     const base = `${window.location.origin}${window.location.pathname}`;
-    return `${base}?invite=${encodeInvite(inv)}`;
+    return `${base}?invite=${encodeInviteCard(card)}`;
   };
 
   const copy = async (text: string, message: string) => {
@@ -306,11 +285,15 @@ export default function App() {
             <p className="mt-2 max-w-[480px] text-[14.5px] leading-[1.75] text-ink-600">
               이름과 생일만 넣으면 {invite.n || '친구'}님과 어떤 인연인지, 내 2027년 한 줄까지 함께 뜹니다.
             </p>
+            <p className="mt-2 max-w-[480px] text-[12.5px] leading-[1.7] text-ink-500">
+              {invite.n || '친구'}님이 보낸 초대 카드에는 생년월일시가 담겨 있지 않습니다. 그래서 지금 보이는 인연은 별자리
+              자리만으로 계산한 간이 결과입니다.
+            </p>
             <div className="mt-5">
               <IntakeForm mode="join" hostName={invite.n} submitLabel="지도에 이름 올리기" onSubmit={handleJoin} />
             </div>
             <p className="mt-4 text-[12.5px] leading-[1.7] text-ink-400">
-              프로토타입 빌드입니다. 지금은 서버에 저장되지 않고 이 브라우저 안에서만 관계가 계산됩니다.
+              {INVITE_NOTE} 프로토타입 빌드라 서버에 저장되지 않고 이 브라우저 안에서만 계산됩니다.
             </p>
           </div>
           <LegalFooter onOpen={legal.openWith} />
@@ -381,6 +364,7 @@ export default function App() {
             <li>· 점수는 두 사람의 행성 교차 각으로만 계산합니다. 만난 기간이나 친밀도는 반영되지 않습니다.</li>
             <li>· 그렇게 나온 값을 같은 방식으로 계산한 표본과 견주어 0~99로 옮기고, 열세 단계로 나눕니다.</li>
             <li>· 생년월일시 원본은 지도에 표시되지 않고, 닉네임·별자리·등급만 보입니다.</li>
+            <li>· 공유하는 초대 링크에도 생년월일시와 태어난 도시는 담기지 않습니다.</li>
             <li>· 시간을 모르면 정오 기준으로 계산하므로, 달·어센던트 기반 등급은 달라질 수 있습니다.</li>
           </ul>
         </div>

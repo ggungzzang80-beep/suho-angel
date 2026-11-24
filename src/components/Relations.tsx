@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { Guardian } from '../lib/guardians';
 import { josaOf } from '../lib/korean';
 import type { Relation } from '../lib/relations';
+import { SignGlyph } from './Glyphs';
 import { GuardianAvatar, TierBadge } from './ui';
 
 export function Room2027({
@@ -88,8 +89,9 @@ export function RankingList({
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
                   <span className="truncate text-[14.5px] font-medium text-ink-900">{r.name}</span>
-                  <span className="shrink-0 text-[12px] text-ink-400">
-                    {r.signGlyph} {r.signName}
+                  <span className="flex shrink-0 items-center gap-1 text-[12px] text-ink-400">
+                    <SignGlyph signIndex={r.signIndex} className="text-[12px]" />
+                    {r.signName}
                   </span>
                 </span>
                 <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
@@ -100,7 +102,9 @@ export function RankingList({
                 </span>
                 <span className="mt-0.5 block truncate text-[12px] text-ink-400">2027 · {r.keyword2027}</span>
               </span>
-              <span className="num shrink-0 text-[14.5px] font-medium text-ink-800">{r.score}</span>
+              <span className="num shrink-0 text-[14.5px] font-medium text-ink-800">
+                {r.approx ? `≈${r.score}` : r.score}
+              </span>
             </button>
             <button
               onClick={() => onRemove(r)}
@@ -132,7 +136,7 @@ export function ShareSection({ onShare, onNewMap }: { onShare: () => void; onNew
       <p className="font-display text-[18px]">친구에게 지도를 건네보세요</p>
       <p className="mt-1.5 max-w-[520px] text-[13.5px] leading-[1.75] text-ink-600">
         친구가 생일만 넣으면 나와 어떤 인연인지, 그 친구의 2027년 한 줄까지 지도에 함께 뜹니다. 사람이 늘수록 관계의
-        균형이 더 정확해집니다.
+        균형이 더 정확해집니다. 링크에는 생년월일시가 담기지 않습니다.
       </p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <button onClick={onShare} className="btn-primary flex-1 !py-2.5 !text-[14.5px]">

@@ -1,5 +1,6 @@
 import type { Relation } from '../lib/relations';
 import { TIERS, tierRank } from '../lib/relations';
+import { SignGlyph } from './Glyphs';
 import { GuardianAvatar, LockIcon, ScoreBar, TierBadge } from './ui';
 
 /**
@@ -40,15 +41,18 @@ export default function PersonSheet({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate font-display text-[19px]">{r.name}</h3>
-            <span className="num rounded-full bg-cream-100 px-2 py-0.5 text-[12.5px] text-ink-600">{r.score}</span>
+            <span className="num rounded-full bg-cream-100 px-2 py-0.5 text-[12.5px] text-ink-600">
+              {r.approx ? `자리 ${r.score}` : r.score}
+            </span>
           </div>
-          <p className="mt-0.5 text-[13px] text-ink-500">
-            {r.signGlyph} {r.signName} · 수호 고양이 {r.guardian.name}
+          <p className="mt-0.5 flex items-center gap-1 text-[13px] text-ink-500">
+            <SignGlyph signIndex={r.signIndex} className="text-[13px]" />
+            {r.signName} · 수호 고양이 {r.guardian.name}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <TierBadge tier={r.tier} size="sm" />
             <span className="text-[12px] text-ink-400">
-              13단계 중 {tierRank(r.tier)}단계 · {r.tier.band}점 구간
+              {r.approx ? '자리 기준 간이 계산' : `13단계 중 ${tierRank(r.tier)}단계 · ${r.tier.band}점 구간`}
             </span>
           </div>
           {/* 열세 단계 가운데 어디인지 — 점 자체는 고정이므로 '오르는' 표시는 두지 않습니다 */}
@@ -66,6 +70,13 @@ export default function PersonSheet({
           닫기
         </button>
       </div>
+
+      {r.approx && (
+        <p className="mt-3 rounded-xl bg-lilac-100 px-3.5 py-2.5 text-[12.5px] leading-[1.7] text-lilac-500">
+          초대 카드로 맺어진 자리입니다. 생년월일시는 오가지 않아 별자리 자리만으로 계산한 간이 인연이에요. 상대가 내
+          지도를 열면 더 정확한 값으로 다시 계산됩니다.
+        </p>
+      )}
 
       <p className="mt-3 rounded-xl px-3.5 py-3 text-[13.5px] leading-[1.8] text-ink-700" style={{ backgroundColor: r.tier.soft }}>
         {r.tier.meaning}. {r.summary}
@@ -173,11 +184,11 @@ export default function PersonSheet({
               />
               <p className="flex-1 text-[13px] leading-[1.6] text-ink-700">
                 {a.aName} {a.type} {a.bName}
-                <span className="num ml-1 text-ink-400">오브 {a.orb.toFixed(1)}°</span>
+                {!r.approx && <span className="num ml-1 text-ink-400">오브 {a.orb.toFixed(1)}°</span>}
               </p>
             </div>
           ))}
-          {!unlocked && r.aspects.length > previewAspects.length && (
+          {!r.approx && !unlocked && r.aspects.length > previewAspects.length && (
             <div className="relative overflow-hidden rounded-lg border border-cream-200 px-2.5 py-2">
               <div className="lock-blur space-y-1 text-[13px] text-ink-500">
                 <p>달 삼분 금성 · 오브 1.2°</p>

@@ -46,7 +46,7 @@ export default function ResultView(props: {
 
   return (
     <div className="pb-4" data-testid="result-root">
-      <header className="sticky top-0 z-30 border-b border-cream-200/70 bg-cream-50/90 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-cream-200 bg-cream-50 shadow-[0_1px_0_rgba(26,26,28,0.04)]">
         <div className="wrap flex h-14 items-center justify-between gap-3">
           <a href="#top" className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-night-800 text-gold-300">

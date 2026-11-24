@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import type { Chart } from '../lib/astro';
 import type { Insights } from '../lib/natal';
-import { aspectLines, exportDataText, housePositions, planetPositions } from '../lib/exportText';
-import { HOUSE_META, SIGNS } from '../lib/signs';
+import { HOUSE_META } from '../lib/signs';
 import NatalWheel from './NatalWheel';
+import { SignGlyph } from './Glyphs';
 import { Arrow, Disclosure, GuardianAvatar } from './ui';
 import { guardianOfSign } from '../lib/guardians';
 
@@ -14,31 +13,8 @@ const ELEMENT_COLOR: Record<string, string> = {
   물: '#8E9FD1',
 };
 
-type Tab = 'planets' | 'houses' | 'aspects';
-
-export default function NatalPanel({ chart, insights, onToast }: { chart: Chart; insights: Insights; onToast: (m: string) => void }) {
-  const [tab, setTab] = useState<Tab>('planets');
-  const [copied, setCopied] = useState(false);
+export default function NatalPanel({ chart, insights }: { chart: Chart; insights: Insights; onToast?: (m: string) => void }) {
   const guardian = guardianOfSign(chart.sun.signIndex);
-
-  const copy = async () => {
-    const text = exportDataText(chart);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      onToast('차트 데이터를 복사했습니다. AI에 그대로 붙여 넣어도 됩니다.');
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      onToast('복사가 막힌 브라우저입니다. 표를 직접 선택해 주세요.');
-    }
-  };
-
-  const rows =
-    tab === 'planets'
-      ? planetPositions(chart).map((t, i) => ({ left: t.split(' in ')[0], right: t }))
-      : tab === 'houses'
-        ? housePositions(chart).map((t, i) => ({ left: `${chart.houses[i].index}하우스`, right: t.replace(/^\S+ House in /, '') }))
-        : aspectLines(chart).map((t) => ({ left: '', right: t }));
 
   return (
     <div className="grid gap-4 lg:grid-cols-[340px_1fr] lg:gap-6">
@@ -62,8 +38,9 @@ export default function NatalPanel({ chart, insights, onToast }: { chart: Chart;
             return (
               <div key={label as string} className="rounded-xl bg-white/5 px-2 py-2">
                 <p className="text-[12px] text-cream-300/60">{label as string}</p>
-                <p className="mt-0.5 text-[13px] text-cream-100">
-                  {SIGNS[point.signIndex].glyph} {point.signName}
+                <p className="mt-0.5 flex items-center justify-center gap-1 text-[13px] text-cream-100">
+                  <SignGlyph signIndex={point.signIndex} className="text-[13px]" />
+                  {point.signName}
                 </p>
               </div>
             );
@@ -89,8 +66,9 @@ export default function NatalPanel({ chart, insights, onToast }: { chart: Chart;
               <div key={row.label} className="flex gap-3">
                 <span className="mt-[2px] w-[74px] shrink-0 text-[12.5px] text-ink-400">{row.label}</span>
                 <div>
-                  <p className="text-[14px] font-medium text-ink-800">
-                    {row.glyph} {row.sign}
+                  <p className="flex items-center gap-1.5 text-[14px] font-medium text-ink-800">
+                    <SignGlyph signIndex={row.signIndex} className="text-[14px]" />
+                    {row.sign}
                   </p>
                   <p className="mt-0.5 text-[13.5px] leading-[1.7] text-ink-600">{row.line}</p>
                 </div>
@@ -145,56 +123,18 @@ export default function NatalPanel({ chart, insights, onToast }: { chart: Chart;
         </div>
 
         <div className="card p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[14px] font-medium text-ink-800">차트 데이터</p>
-              <p className="mt-1 text-[13px] leading-[1.6] text-ink-500">
-                Astro-Seek 형식 그대로. 표를 복사해 다른 곳에서 분석할 수 있습니다.
-              </p>
-            </div>
-            <button onClick={copy} className="btn-ghost !px-3 !py-1.5 !text-[13px]">
-              {copied ? '복사됨' : '복사'}
-            </button>
-          </div>
-
-          <div className="mt-3 flex gap-1.5">
-            {[
-              ['planets', '행성 위치'],
-              ['houses', '하우스'],
-              ['aspects', '각'],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => setTab(id as Tab)}
-                aria-pressed={tab === id}
-                className={`rounded-full px-3 py-1.5 text-[13px] transition ${
-                  tab === id ? 'bg-night-800 text-cream-50' : 'bg-cream-100 text-ink-600 hover:bg-cream-200'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-3 max-h-[250px] overflow-y-auto rounded-xl border border-cream-200">
-            <table className="w-full text-left text-[13px]">
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={i} className={i % 2 ? 'bg-cream-50' : 'bg-white'}>
-                    <td className="w-[86px] whitespace-nowrap px-3 py-2 text-ink-500">{r.left}</td>
-                    <td className="px-3 py-2 text-ink-800">{r.right}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
+          <p className="text-[14px] font-medium text-ink-800">어센던트부터 한 자리씩 놓인 하우스</p>
+          <p className="mt-1 text-[13px] leading-[1.6] text-ink-500">
+            하우스는 삶의 영역입니다. 내 어센던트 자리에서 시작해 한 자리가 한 하우스가 됩니다.
+          </p>
           <div className="mt-3">
-            <Disclosure summary="하우스 자리 한눈에 보기">
+            <Disclosure summary="열두 하우스 자리 한눈에 보기">
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px] sm:grid-cols-3">
                 {chart.houses.map((h) => (
                   <div key={h.index} className="flex justify-between gap-2">
-                    <span className="text-ink-500">{h.index}. {HOUSE_META[h.index - 1].short}</span>
+                    <span className="text-ink-500">
+                      {h.index}. {HOUSE_META[h.index - 1].short}
+                    </span>
                     <span className="text-ink-800">{h.signName}</span>
                   </div>
                 ))}

@@ -14,7 +14,7 @@ import { mkdirSync } from 'node:fs';
 const BASE = process.env.E2E_BASE ?? 'http://127.0.0.1:4183/';
 const OUT = '/workspace/downloads';
 const SHOT_DIR = '/workspace/projects/suho-angel/e2e/out';
-const EXE = '/workspace/.scratch/pw/browsers/chromium-1148/chrome-linux/chrome';
+const EXE = process.env.E2E_CHROME ?? '/workspace/.scratch/pw/browsers/chromium-1148/chrome-linux/chrome';
 const errors = [];
 const failed = [];
 let pass = 0;
@@ -90,7 +90,7 @@ async function run(mode) {
 
   check('랜딩 타이틀', (await page.title()).includes('나의 수호천사'));
   check('30초 입력 폼 노출', await page.locator('#intake-date').isVisible());
-  check('수호 고양이 14종 노출', (await page.locator('img[alt*="태양성"]').count()) > 0);
+  check('수호 고양이 12종 노출', (await page.locator('img[alt*="수호 고양이"]').count()) >= 12);
   check(
     '등급 13단계 노출',
     (await page.getByText('소울메이트').count()) > 0 &&
@@ -380,16 +380,34 @@ async function runGuest(mode) {
 
   console.log(`\n=== ${mode} · 초대 링크 ===`);
 
-  const inviteLink = async (payload) =>
+  /* v2 초대 카드 — 이름과 별자리 자리만 담습니다(생년월일·시각·도시 없음) */
+  const inviteLink = async (card) =>
     guest.evaluate((inv) => {
-      const json = JSON.stringify(inv);
-      const b64 = btoa(
-        encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))),
-      );
-      return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    }, payload);
+      const bytes = new TextEncoder().encode(JSON.stringify(inv));
+      let bin = '';
+      bytes.forEach((b) => {
+        bin += String.fromCharCode(b);
+      });
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }, card);
 
-  const linkWithGender = await inviteLink({ n: '나래', d: '19900315', t: '1010', k: true, c: '서울', g: 'male' });
+  const cardOf = (gender) => ({
+    v: 2,
+    n: '나래',
+    p: [11, 4, 0, 11, 10, 5, 10, 9, 9, 7],
+    a: 3,
+    ...(gender ? { g: gender } : {}),
+  });
+
+  const linkWithGender = await inviteLink(cardOf('m'));
+  check(
+    '초대 링크에 생년월일·시각·도시가 없음',
+    !/\d{8}|\d{4}-|"d"|"t"|"c"/.test(
+      decodeURIComponent(
+        Buffer.from(linkWithGender.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
+      ),
+    ),
+  );
   await guest.goto(`${BASE}?invite=${linkWithGender}`, { waitUntil: 'networkidle' });
   await guest.waitForTimeout(700);
   check('초대 링크 참여 화면', (await guest.getByText(/나래님의 지도에/).count()) > 0);
@@ -410,12 +428,12 @@ async function runGuest(mode) {
   await guest.keyboard.press('Escape');
   await guest.waitForTimeout(300);
 
-  /* 구버전 초대 링크(성별 없음) */
-  const legacyLink = await inviteLink({ n: '나래', d: '19900315', t: '1010', k: true, c: '서울' });
+  /* 성별을 넣지 않은 초대 카드 → 공통 가중치로 폴백 */
+  const legacyLink = await inviteLink(cardOf());
   await guest.evaluate(() => localStorage.clear());
   await guest.goto(`${BASE}?invite=${legacyLink}`, { waitUntil: 'networkidle' });
   await guest.waitForTimeout(700);
-  check('구버전 초대 링크도 참여 화면', (await guest.getByText(/나래님의 지도에/).count()) > 0);
+  check('성별 없는 초대 카드도 참여 화면', (await guest.getByText(/나래님의 지도에/).count()) > 0);
   await fillIntake(guest, { name: '보라', date: '19890423', time: '0815', city: '대전' });
   await guest.locator('input[type="checkbox"]').last().check();
   await guest.getByRole('button', { name: '지도에 이름 올리기' }).click();
@@ -423,7 +441,7 @@ async function runGuest(mode) {
   await safeClick(guest.getByRole('button', { name: '나래 자세히 보기' }).first());
   await guest.waitForTimeout(500);
   const legacyBadge = await guest.locator('[data-testid="house-groups"]').getAttribute('data-compat-mode');
-  check('구버전 초대 링크 폴백(공통)', legacyBadge === 'neutral', legacyBadge);
+  check('성별 없는 초대 카드 폴백(공통)', legacyBadge === 'neutral', legacyBadge);
   await guest.keyboard.press('Escape');
   await guest.waitForTimeout(300);
 
@@ -433,7 +451,9 @@ async function runGuest(mode) {
     if (!raw) return;
     const saved = JSON.parse(raw);
     delete saved.me.gender;
-    saved.people.forEach((p) => delete p.input.gender);
+    saved.people.forEach((p) => {
+      if (p.input) delete p.input.gender;
+    });
     localStorage.setItem('suho-angel.v1', JSON.stringify(saved));
   });
   await guest.reload({ waitUntil: 'networkidle' });

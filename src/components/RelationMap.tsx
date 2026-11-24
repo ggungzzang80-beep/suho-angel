@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { Chart } from '../lib/astro';
 import { guardianOfSign } from '../lib/guardians';
 import { TIERS, type MapBalance, type Relation } from '../lib/relations';
@@ -34,6 +35,37 @@ export default function RelationMap({
   onShare: () => void;
 }) {
   const myGuardian = guardianOfSign(me.sun.signIndex);
+
+  /**
+   * 지도 노드 라벨 배치.
+   * 아바타 아래에 이름을 붙이면 안쪽 궤도 노드끼리, 또 아래쪽 범례와 겹쳤습니다.
+   * 그래서 라벨을 아바타와 분리해 두 줄(이름·점수)짜리 상자로 놓고,
+   * 가까운 상자와 부딪히면 위/아래 후보 자리를 차례로 시도합니다.
+   */
+  const labels = useMemo(() => {
+    const W = 19; // 라벨 상자 폭(%) — w-[84px] / 지도 폭 430px
+    const H = 8; // 라벨 상자 높이(%)
+    const AV = 11; // 아바타 상자 크기(%)
+    const centerBox = { x: 50, y: 50, w: 22, h: 22 };
+    const placed: Array<{ x: number; y: number; w: number; h: number }> = [centerBox];
+    const hits = (x: number, y: number) =>
+      placed.some((b) => Math.abs(b.x - x) < (b.w + W) / 2 && Math.abs(b.y - y) < (b.h + H) / 2);
+
+    return [...relations]
+      .sort((a, b) => b.score - a.score)
+      .map((r) => {
+        /* 아바타 자리는 먼저 차지해 둡니다 */
+        placed.push({ x: r.x, y: r.y, w: AV, h: AV });
+        return r;
+      })
+      .map((r) => {
+        const candidates = [6.6, -6.6, 13.2, -13.2, 19.8, -19.8].map((d) => r.y + (r.y > 50 ? -d : d));
+        const fallback = r.y > 50 ? r.y - 22 : r.y + 22;
+        const y = candidates.find((c) => c > 3 && c < 97 && !hits(r.x, c)) ?? Math.max(3, Math.min(97, fallback));
+        placed.push({ x: r.x, y, w: W, h: H });
+        return { r, x: r.x, y };
+      });
+  }, [relations]);
 
   const legend = (side: 'protect' | 'tension') => {
     const list = TIERS.filter((t) => t.side === side);
@@ -142,25 +174,33 @@ export default function RelationMap({
               <p className="text-[12.5px] text-gold-300">{me.sun.signName}</p>
             </div>
 
-            {relations.map((r) => {
-              /* 지도 아래쪽 가장자리에 놓인 사람은 이름·점수가 아래 범례와 겹치지 않도록 조금 위로 올립니다 */
-              const lift = r.y > 68 ? 22 : 0;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => onSelect(r)}
-                  className="group absolute z-10 text-center focus:outline-none"
-                  style={{ left: `${r.x}%`, top: `${r.y}%`, transform: `translate(-50%, calc(-50% - ${lift}px))` }}
-                  aria-label={`${r.name} 자세히 보기`}
-                >
-                  <span className="block transition group-hover:-translate-y-0.5 group-active:scale-95">
-                    <GuardianAvatar guardian={r.guardian} size={r.ring === 0 ? 46 : 38} ring={r.tier.color} />
-                  </span>
-                  <span className="mt-1 block max-w-[58px] truncate text-[12px] leading-tight text-cream-100">{r.name}</span>
-                  <span className="num block text-[12px] text-cream-300/60">{r.score}</span>
-                </button>
-              );
-            })}
+            {/* 이름·점수 라벨 — 아바타와 따로 놓아 서로 겹치지 않게 자리를 찾습니다 */}
+            {labels.map(({ r, x, y }) => (
+              <div
+                key={`label-${r.id}`}
+                className="pointer-events-none absolute z-10 w-[84px] text-center"
+                style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
+              >
+                <p className="truncate text-[12px] leading-tight text-cream-100">{r.name}</p>
+                <p className="num text-[12px] leading-tight text-cream-300/60">
+                  {r.approx ? `≈${r.score}` : r.score}
+                </p>
+              </div>
+            ))}
+
+            {relations.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => onSelect(r)}
+                className="group absolute z-10 text-center focus:outline-none"
+                style={{ left: `${r.x}%`, top: `${r.y}%`, transform: 'translate(-50%, -50%)' }}
+                aria-label={`${r.name} 자세히 보기`}
+              >
+                <span className="block transition group-hover:-translate-y-0.5 group-active:scale-95">
+                  <GuardianAvatar guardian={r.guardian} size={r.ring === 0 ? 46 : 38} ring={r.tier.color} />
+                </span>
+              </button>
+            ))}
 
             {!relations.length && (
               <div className="absolute inset-x-6 bottom-6 text-center">
@@ -179,6 +219,11 @@ export default function RelationMap({
             <p className="pt-1 text-[12.5px] leading-[1.6] text-cream-300/50">
               * Frenemy (프레너미): Friend(친구)와 Enemy(적)의 합성
             </p>
+            {relations.some((r) => r.approx) && (
+              <p className="text-[12.5px] leading-[1.6] text-cream-300/50">
+                * ≈ 표시는 초대 카드로 들어온 사람 — 생년월일시 없이 별자리 자리만으로 계산한 간이 값입니다.
+              </p>
+            )}
           </div>
         </div>
 

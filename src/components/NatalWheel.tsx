@@ -1,5 +1,7 @@
 import { norm360, type Chart } from '../lib/astro';
 import { PLANET_META, SIGNS, type PointKey } from '../lib/signs';
+import { GLYPH_PATHS } from './glyphPaths';
+import { glyphTransform } from './Glyphs';
 
 const SIZE = 360;
 const C = SIZE / 2;
@@ -60,15 +62,12 @@ export default function NatalWheel({ chart }: { chart: Chart }) {
         return (
           <g key={sign.index}>
             <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="rgba(250,247,242,0.14)" strokeWidth="0.6" />
-            <text
-              x={g.x}
-              y={g.y + 4.5}
-              textAnchor="middle"
-              fontSize="13"
+            {/* 상징 글꼴이 없는 기기에서도 깨지지 않도록 기호는 글자가 아니라 path 로 그립니다 */}
+            <path
+              d={GLYPH_PATHS[sign.glyph]}
+              transform={glyphTransform(g.x, g.y, 13)}
               fill={isRising ? '#DBBD86' : 'rgba(250,247,242,0.62)'}
-            >
-              {sign.glyph}
-            </text>
+            />
             <text x={mid.x} y={mid.y + 3} textAnchor="middle" fontSize="7.5" fill="rgba(250,247,242,0.34)">
               {((sign.index - chart.rising.signIndex + 12) % 12) + 1}
             </text>
@@ -98,11 +97,16 @@ export default function NatalWheel({ chart }: { chart: Chart }) {
       {/* 행성 */}
       {placed.map((p) => {
         const { x, y } = pos(p.lon + p.offset, ascLon, RAD.planet);
+        const glyphPath = GLYPH_PATHS[PLANET_META[p.key].glyph];
         return (
           <g key={p.key}>
-            <text x={x} y={y + 4} textAnchor="middle" fontSize="12.5" fill="#F7EFDD">
-              {p.label}
-            </text>
+            {glyphPath ? (
+              <path d={glyphPath} transform={glyphTransform(x, y, 12.5)} fill="#F7EFDD" />
+            ) : (
+              <text x={x} y={y + 4} textAnchor="middle" fontSize="12.5" fill="#F7EFDD">
+                {p.label}
+              </text>
+            )}
             {p.retro && (
               <text x={x + 8} y={y + 8} textAnchor="middle" fontSize="6.5" fill="rgba(217,143,134,0.9)">
                 R
@@ -130,9 +134,11 @@ export default function NatalWheel({ chart }: { chart: Chart }) {
       })()}
 
       {/* 중심 */}
-      <text x={C} y={C - 2} textAnchor="middle" fontSize="16" fill="#DBBD86">
-        {SIGNS[chart.sun.signIndex].glyph}
-      </text>
+      <path
+        d={GLYPH_PATHS[SIGNS[chart.sun.signIndex].glyph]}
+        transform={glyphTransform(C, C - 2, 16)}
+        fill="#DBBD86"
+      />
       <text x={C} y={C + 14} textAnchor="middle" fontSize="7.5" fill="rgba(250,247,242,0.55)">
         {chart.sun.signName}
       </text>

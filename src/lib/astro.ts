@@ -7,10 +7,8 @@
  * 4) 하우스: 어센던트 자리부터 한 자리 = 한 하우스 (Whole Sign)
  * 5) 각: 합·육분·사분·삼분·대립 + 오브 + 접근/이탈(applying/separating)
  *
- * 참고: Astro-Seek 의 'Birth chart → AI/ChatGPT data export' 가 내보내는
- *       Planet positions / House positions / Planet aspects 세 묶음을 그대로
- *       화면에서 재현할 수 있도록, 모든 점의 자리·도수·하우스·역행과
- *       각의 오브·적용 상태를 데이터로 남깁니다.
+ * 모든 점의 자리·도수·하우스·역행과 각의 오브·적용 상태를 데이터로 남겨,
+ * 화면의 계산이 언제나 같은 입력에서 같은 값으로 나오게 합니다.
  */
 
 import { PLANET_META, PLANET_ORDER, SIGNS } from './signs';
@@ -330,7 +328,7 @@ export function findAspect(lonA: number, lonB: number): RawAspect | null {
 
 /* ------------------------------ 빌드 ------------------------------ */
 
-function pointFrom(key: PointKey, longitude: number, speed: number, ascSignIndex: number): ChartPoint {
+export function pointFrom(key: PointKey, longitude: number, speed: number, ascSignIndex: number): ChartPoint {
   const lon = norm360(longitude);
   const signIndex = Math.floor(lon / 30) % 12;
   const sign = SIGNS[signIndex];

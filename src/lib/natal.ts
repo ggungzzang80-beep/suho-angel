@@ -14,6 +14,7 @@
 import type { Chart, ChartPoint } from './astro';
 import { signIndexOfLongitude, transitingDates, TODAY } from './astro';
 import { HOUSE_META, HOUSE_MONTH_THEME, PLANET_META, SIGNS } from './signs';
+import { josaOf, withJosa } from './korean';
 
 export type InsightCard = {
   id: string;
@@ -48,7 +49,7 @@ export type MonthNode = {
 export type Insights = {
   headline: string;
   oneLine: string;
-  identity: Array<{ label: string; sign: string; glyph: string; line: string }>;
+  identity: Array<{ label: string; sign: string; signIndex: number; glyph: string; line: string }>;
   balance: Array<{ element: string; count: number; percent: number }>;
   modalityLine: string;
   cards: InsightCard[];
@@ -147,20 +148,23 @@ export function buildInsights(chart: Chart): Insights {
     {
       label: '중심 · 태양',
       sign: sunSign.name,
+      signIndex: sunSign.index,
       glyph: sunSign.glyph,
       line: sunSign.identity,
     },
     {
       label: '감정 · 달',
       sign: moonSign.name,
+      signIndex: moonSign.index,
       glyph: moonSign.glyph,
       line: `${moonSign.name}의 달 — ${moonSign.keyword}. ${moonSign.love}`,
     },
     {
       label: '첫인상 · 어센던트',
       sign: riseSign.name,
+      signIndex: riseSign.index,
       glyph: riseSign.glyph,
-      line: `처음 만나는 사람에게는 ${riseSign.keyword}으로 보입니다. ${riseSign.identity.split('.')[0]}.`,
+      line: `처음 만나는 사람에게는 ${riseSign.keyword}${josaOf(riseSign.keyword, '으로로')} 보입니다. ${riseSign.identity.split('.')[0]}.`,
     },
   ];
 
@@ -226,10 +230,10 @@ export function buildInsights(chart: Chart): Insights {
   const careerLines = [
     `10하우스(커리어)는 ${tenthSign.name}입니다. ${tenthSign.work}`,
     mcRuler
-      ? `MC의 지배성은 ${mcSign.ruler}이고, 그 ${mcSign.ruler}이 ${mcRuler.signName} ${mcRuler.house}하우스에 있습니다. ${PLANET_META[mcRuler.key].means}이(가) ${HOUSE_META[mcRuler.house - 1].short} 자리에서 쓰이는 일이 성과로 이어집니다.`
+      ? `MC의 지배성은 ${mcSign.ruler}이고, 그 ${withJosa(mcSign.ruler, '이가')} ${mcRuler.signName} ${mcRuler.house}하우스에 있습니다. ${PLANET_META[mcRuler.key].means}${josaOf(PLANET_META[mcRuler.key].means, '이가')} ${HOUSE_META[mcRuler.house - 1].short} 자리에서 쓰이는 일이 성과로 이어집니다.`
       : `MC의 지배성은 ${mcSign.ruler}입니다.`,
     tenthPlanets.length
-      ? `10하우스에 ${tenthPlanets.join('·')}이(가) 앉아 있어, 이 영역이 삶에서 자주 다뤄집니다.`
+      ? `10하우스에 ${withJosa(tenthPlanets.join('·'), '이가')} 앉아 있어, 이 영역이 삶에서 자주 다뤄집니다.`
       : '10하우스가 비어 있어 직업은 고정된 하나보다 그때그때 맡은 일로 채워집니다.',
     `화성 ${chart.planets[4].signName} ${chart.planets[4].house}하우스 · 토성 ${chart.planets[6].signName} ${chart.planets[6].house}하우스 — ${
       chart.planets[4].house === 10 || chart.planets[6].house === 10

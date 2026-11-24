@@ -1,3 +1,4 @@
+import { josaOf } from '../lib/korean';
 /**
  * 사업자 정보 · 정책 문서 (legal.ts)
  * ------------------------------------------------------------------
@@ -177,7 +178,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
           {
             kind: 'ul',
             items: [
-              `유료 콘텐츠의 결제는 ${BUSINESS.paymentAgency}를 통해 이루어집니다.`,
+              `유료 콘텐츠의 결제는 ${BUSINESS.paymentAgency}${josaOf(BUSINESS.paymentAgency, '을를')} 통해 이루어집니다.`,
               '결제 금액과 제공 범위는 결제 화면에 표시된 내용과 같습니다.',
               '회사는 결제 완료 후 이용자가 결제한 콘텐츠를 즉시 열람할 수 있도록 합니다.',
               '결제 정보는 결제대행사의 정책에 따라 처리되며, 회사는 카드번호 전체를 저장하지 않습니다.',
@@ -259,7 +260,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
         blocks: [
           {
             kind: 'p',
-            text: `${BUSINESS.company}는 이용자의 개인정보를 소중하게 생각하며, 「개인정보 보호법」 등 관련 법령을 따릅니다. 이 방침은 서비스가 어떤 정보를 어떤 목적으로 처리하는지 알려 드립니다.`,
+            text: `${BUSINESS.company}${josaOf(BUSINESS.company, '은는')} 이용자의 개인정보를 소중하게 생각하며, 「개인정보 보호법」 등 관련 법령을 따릅니다. 이 방침은 서비스가 어떤 정보를 어떤 목적으로 처리하는지 알려 드립니다.`,
           },
         ],
       },

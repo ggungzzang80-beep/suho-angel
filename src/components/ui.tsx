@@ -132,7 +132,7 @@ export function GuardianAvatar({
     >
       <img
         src={`${BASE_PATH}${guardian.file.replace(/^\//, '')}`}
-        alt={`${guardian.name} (${guardian.star})`}
+        alt={`수호 고양이 ${guardian.name}`}
         width={size}
         height={size}
         className="h-full w-full object-cover"

@@ -1,4 +1,5 @@
-import { GUARDIANS } from '../lib/guardians';
+import { SIGN_GUARDIANS } from '../lib/guardians';
+import { SIGNS } from '../lib/signs';
 import { TIERS } from '../lib/relations';
 import IntakeForm, { type IntakeSubmit } from './IntakeForm';
 import { GuardianAvatar, Star, TierBadge } from './ui';
@@ -12,7 +13,7 @@ export default function Landing({
 }) {
   return (
     <div className="pb-16">
-      <header className="sticky top-0 z-30 border-b border-cream-200/70 bg-cream-50/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-cream-200 bg-cream-50">
         <div className="wrap flex h-14 items-center justify-between">
           <a href="#top" className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-night-800 text-gold-300">
@@ -66,15 +67,15 @@ export default function Landing({
         <section className="wrap mt-12">
           <div className="rounded-[22px] border border-cream-200 bg-white/60 p-4 sm:p-5">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="text-[14px] font-medium text-ink-700">수호 고양이 14종</p>
-              <p className="text-[12.5px] text-ink-400">태양 별자리마다 한 마리씩</p>
+              <p className="text-[14px] font-medium text-ink-700">수호 고양이 12종</p>
+              <p className="text-[12.5px] text-ink-400">열두 별자리에 한 마리씩</p>
             </div>
             <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto pb-1">
-              {GUARDIANS.map((g) => (
+              {SIGN_GUARDIANS.map((g) => (
                 <div key={g.id} className="w-[78px] shrink-0 text-center">
                   <GuardianAvatar guardian={g} size={62} className="mx-auto" />
                   <p className="mt-1.5 text-[12.5px] font-medium text-ink-800">{g.name}</p>
-                  <p className="text-[12px] text-ink-400">{g.trait}</p>
+                  <p className="text-[12px] text-ink-400">{SIGNS[g.signIndex ?? 0].name}</p>
                 </div>
               ))}
             </div>
