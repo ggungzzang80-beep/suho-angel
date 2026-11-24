@@ -44,26 +44,57 @@ export default function RelationMap({
    */
   const labels = useMemo(() => {
     const W = 19; // 라벨 상자 폭(%) — w-[84px] / 지도 폭 430px
-    const H = 8; // 라벨 상자 높이(%)
-    const AV = 11; // 아바타 상자 크기(%)
-    const centerBox = { x: 50, y: 50, w: 22, h: 22 };
-    const placed: Array<{ x: number; y: number; w: number; h: number }> = [centerBox];
-    const hits = (x: number, y: number) =>
-      placed.some((b) => Math.abs(b.x - x) < (b.w + W) / 2 && Math.abs(b.y - y) < (b.h + H) / 2);
+    const H = 9; // 라벨 상자 높이(%)
+    const AV = 12; // 아바타 상자 크기(%)
+    type Box = { x: number; y: number; w: number; h: number };
+    const placed: Box[] = [
+      { x: 50, y: 50, w: 22, h: 22 }, // 가운데 '나' 아바타
+      { x: 50, y: 60, w: 26, h: 11 }, // 가운데 '나' 이름·별자리
+    ];
+    relations.forEach((r) => placed.push({ x: r.x, y: r.y, w: AV, h: AV }));
+
+    const overlapOf = (x: number, y: number) =>
+      placed.reduce((sum, b) => {
+        const ox = Math.min(x + W / 2, b.x + b.w / 2) - Math.max(x - W / 2, b.x - b.w / 2);
+        const oy = Math.min(y + H / 2, b.y + b.h / 2) - Math.max(y - H / 2, b.y - b.h / 2);
+        return sum + Math.max(0, ox) * Math.max(0, oy);
+      }, 0);
+
+    /* 아바타 바로 위/아래부터 시작해 조금씩 밀어 보고, 겹침이 가장 적은 자리를 씁니다 */
+    const rings = [6.8, 13.6, 20.4, 27.2, 34];
+    const sides = [1, -1];
+    const shifts = [0, -11, 11, -20, 20];
 
     return [...relations]
       .sort((a, b) => b.score - a.score)
       .map((r) => {
-        /* 아바타 자리는 먼저 차지해 둡니다 */
-        placed.push({ x: r.x, y: r.y, w: AV, h: AV });
-        return r;
-      })
-      .map((r) => {
-        const candidates = [6.6, -6.6, 13.2, -13.2, 19.8, -19.8].map((d) => r.y + (r.y > 50 ? -d : d));
-        const fallback = r.y > 50 ? r.y - 22 : r.y + 22;
-        const y = candidates.find((c) => c > 3 && c < 97 && !hits(r.x, c)) ?? Math.max(3, Math.min(97, fallback));
-        placed.push({ x: r.x, y, w: W, h: H });
-        return { r, x: r.x, y };
+        const near = r.y > 50 ? -1 : 1; // 아래쪽 노드는 위로, 위쪽 노드는 아래로
+        const candidates: Array<{ x: number; y: number }> = [];
+        for (const d of rings) {
+          for (const side of sides) {
+            for (const dx of shifts) {
+              const y = r.y + d * side * (side === near ? 1 : 0.85);
+              const x = Math.max(13, Math.min(87, r.x + dx));
+              if (y > 4 && y < 96) candidates.push({ x, y });
+            }
+          }
+        }
+        let best = candidates[0];
+        let bestScore = Number.POSITIVE_INFINITY;
+        for (const c of candidates) {
+          const score = overlapOf(c.x, c.y) + Math.abs(c.x - r.x) * 0.01 + Math.abs(c.y - r.y) * 0.004;
+          if (score < bestScore) {
+            bestScore = score;
+            best = c;
+          }
+          if (overlapOf(c.x, c.y) === 0) {
+            best = c;
+            bestScore = 0;
+            break;
+          }
+        }
+        placed.push({ x: best.x, y: best.y, w: W, h: H });
+        return { r, x: best.x, y: best.y };
       });
   }, [relations]);
 
@@ -153,6 +184,26 @@ export default function RelationMap({
               {STARS.map((st, i) => (
                 <circle key={`st-${i}`} cx={st.x} cy={st.y} r={st.r} fill="#FAF7F2" opacity={st.o} />
               ))}
+              {/* 라벨이 아바타에서 떨어져 놓인 경우, 어느 아바타의 이름인지 잇는 점선 */}
+              {labels
+                .filter((l) => Math.abs(l.x - l.r.x) > 4 || Math.abs(l.y - l.r.y) > 9)
+                .map((l) => {
+                  const endX = Math.max(l.x - 9.5, Math.min(l.x + 9.5, l.r.x));
+                  const endY = Math.max(l.y - 4.5, Math.min(l.y + 4.5, l.r.y));
+                  return (
+                    <line
+                      key={`ll-${l.r.id}`}
+                      x1={l.r.x}
+                      y1={l.r.y}
+                      x2={endX}
+                      y2={endY}
+                      stroke="rgba(219,189,134,0.42)"
+                      strokeWidth="0.26"
+                      strokeDasharray="0.9 1.2"
+                    />
+                  );
+                })}
+
               {relations.map((r) => (
                 <line
                   key={`l-${r.id}`}
